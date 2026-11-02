@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% block title %}FER Monitor | Session #{{ session.id }}{% endblock %}
+{% block tab_hist %}active{% endblock %}
+{% block head %}<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>{% endblock %}
+
+{% block content %}
+  <header class="page-header" style="--mood:var(--e-{{ session.dominant }})">
+    <a href="/history" class="back-btn" data-at>&larr; Kembali</a>
+    <p class="kicker" data-at style="margin-top:22px">{{ session.date }}</p>
+    <h1 data-at-split>Session <em>#{{ session.id }}</em></h1>
+  </header>
+
+  <section class="metrics-grid" data-at-stagger>
+    <div class="metric-card"><div class="label">Durasi Sesi</div><div class="value">{{ session.duration // 60 }}m {{ session.duration % 60 }}s</div></div>
+    <div class="metric-card" style="--c:var(--e-{{ session.dominant }})"><div class="label">Ekspresi Dominan</div><div class="value value-mood">{{ session.dominant }}</div></div>
+    <div class="metric-card"><div class="label">Total Log</div><div class="value">{{ session.total_logs }}</div></div>
+  </section>
+
+  {% if session.timeline %}
+  <section class="chart-section" data-at>
+    <h3>Garis waktu ekspresi</h3>
+    <div class="timeline" role="img" aria-label="Urutan ekspresi selama sesi">
+      {% for t in session.timeline %}<i style="background:var(--e-{{ t.emotion }})" title="{{ t.start }} sampai {{ t.end }}: {{ t.emotion }} ({{ t.confidence }})"></i>{% endfor %}
+    </div>
+    <div class="timeline-ends"><span>{{ session.timeline[0].start }}</span><span>{{ session.timeline[-1].end }}</span></div>
+  </section>
+
+  <section class="chart-section" data-at>
+    <div class="chart-header">
+      <h3>Distribusi Ekspresi</h3>
+      <div class="chart-toggle">
+        <button id="btn-bar" class="toggle-btn active" onclick="setChartType('bar')">Bar</button>
+        <button id="btn-pie" class="toggle-btn" onclick="setChartType('pie')">Pie</button>
+      </div>
+    </div>
+    <canvas id="emotionChart"></canvas>
+  </section>
+  {% else %}
+  <div class="empty-state">Berkas CSV sesi ini tidak ditemukan di folder sessions.</div>
+  {% endif %}
+
+  <div class="action-row" data-at>
+    {% if session.timeline %}<a href="/download/{{ session.id }}" class="btn-primary" download>Download CSV</a>{% endif %}
+    <button class="btn-danger" onclick="deleteSession({{ session.id }})">Hapus Sesi</button>
+  </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const distribution = {{ session.distribution | tojson }};
+  const labels = Object.keys(distribution);
+  const values = Object.values(distribution);
+
+  let chart = null;
+  const css = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+
+  function setChartType(type) {
+    if (!document.getElementById('emotionChart') || typeof Chart === 'undefined') return;
+    document.getElementById('btn-bar').classList.toggle('active', type === 'bar');
+    document.getElementById('btn-pie').classList.toggle('active', type === 'pie');
+
+    if (chart) chart.destroy();
+
+    Chart.defaults.color = css('--text-secondary');
+    chart = new Chart(document.getElementById('emotionChart'), {
+      type: type,
+      data: {
+        labels: labels,
+        datasets: [{
+          label: 'Persentase (%)',
+          data: values,
+          backgroundColor: labels.map(l => css('--e-' + l) || '#888'),
+          borderWidth: 0,
+          borderRadius: type === 'bar' ? 4 : 0
+        }]
+      },
+      options: type === 'bar'
+        ? { scales: { y: { beginAtZero: true, max: 100, grid: { color: css('--border-color') } }, x: { grid: { display: false } } }, plugins: { legend: { display: false } } }
+        : { plugins: { legend: { position: 'bottom' } } }
+    });
+  }
+
+  setChartType('bar');
+
+  function deleteSession(id) {
+    if (!confirm('Yakin hapus sesi ini? Tidak bisa dibatalkan.')) return;
+
+    fetch(`/api/session/${id}/delete`, { method: 'POST' })
+      .then(res => res.json())
+      .then(data => {
+        if (data.status === 'deleted') {
+          window.location.href = '/history';
+        } else {
+          alert('Gagal menghapus sesi.');
+        }
+      });
+  }
+</script>
+{% endblock %}

@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}FER Monitor | History{% endblock %}
+{% block tab_hist %}active{% endblock %}
+
+{% block content %}
+  <header class="page-header">
+    <p class="kicker" data-at>Arsip monitoring</p>
+    <h1 data-at-split>History <em>sesi</em></h1>
+    <p class="lead" data-at>Daftar sesi monitoring yang telah selesai.</p>
+  </header>
+
+  {% if sessions %}
+    <section class="metrics-grid" data-at-stagger>
+      <div class="metric-card"><div class="label">Total sesi</div><div class="value">{{ sessions|length }}</div></div>
+      {% set total = sessions|sum(attribute='duration') %}
+      <div class="metric-card"><div class="label">Total durasi</div><div class="value">{{ total // 60 }}m {{ total % 60 }}s</div></div>
+      <div class="metric-card"><div class="label">Sesi terakhir</div><div class="value value-sm">{{ sessions[0].date }}</div></div>
+    </section>
+  {% endif %}
+
+  <div class="filter-row" data-at>
+    <input type="text" id="search-input" placeholder="Cari berdasarkan tanggal..." oninput="filterSessions()" aria-label="Cari tanggal">
+    <select id="filter-emotion" onchange="filterSessions()" aria-label="Saring ekspresi">
+      <option value="">Semua ekspresi</option>
+      <option value="happy">Happy</option>
+      <option value="sad">Sad</option>
+      <option value="angry">Angry</option>
+      <option value="fear">Fear</option>
+      <option value="surprise">Surprise</option>
+      <option value="disgust">Disgust</option>
+      <option value="neutral">Neutral</option>
+    </select>
+  </div>
+
+  {% if sessions %}
+    <div class="session-list" data-at-stagger>
+      {% for s in sessions %}
+      <a href="/history/{{ s.id }}" class="session-card" style="--c:var(--e-{{ s.dominant }})"
+         data-date="{{ s.date|lower }}" data-emotion="{{ s.dominant }}">
+        <div class="session-info">
+          <div class="title">Session #{{ s.id }}</div>
+          <div class="meta">{{ s.date }} &middot; {{ s.duration // 60 }} menit {{ s.duration % 60 }} detik</div>
+        </div>
+        <span class="badge">{{ s.dominant }}</span>
+      </a>
+      {% endfor %}
+    </div>
+    <p id="no-match" class="empty-state hidden">Tidak ada sesi yang cocok dengan pencarian.</p>
+  {% else %}
+    <div class="empty-state">
+      <p>Belum ada sesi yang tercatat. Mulai sesi pertama di halaman Live Preview.</p>
+    </div>
+  {% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+  function filterSessions() {
+    const search = document.getElementById('search-input').value.toLowerCase();
+    const emotion = document.getElementById('filter-emotion').value;
+    let shown = 0;
+
+    document.querySelectorAll('.session-card').forEach(card => {
+      const match = card.dataset.date.includes(search) && (!emotion || card.dataset.emotion === emotion);
+      card.style.display = match ? 'flex' : 'none';
+      if (match) shown++;
+    });
+    const none = document.getElementById('no-match');
+    if (none) none.classList.toggle('hidden', shown > 0);
+  }
+</script>
+{% endblock %}

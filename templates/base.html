@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}FER Monitor{% endblock %}</title>
+  <script>
+    try { document.documentElement.setAttribute('data-theme', localStorage.getItem('fer-theme') || 'dark'); } catch (e) {}
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Syne:wght@500;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='atelier/atelier.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <script src="{{ url_for('static', filename='fer-theme.js') }}"></script>
+  <script src="{{ url_for('static', filename='atelier/atelier.js') }}"></script>
+  {% block head %}{% endblock %}
+</head>
+<body>
+  <nav class="navbar at-top">
+    <a class="navbar-brand" href="/"><i></i>FER Monitor</a>
+    <div class="navbar-tabs">
+      <a href="/" class="nav-tab {% block tab_live %}{% endblock %}">Live Preview</a>
+      <a href="/history" class="nav-tab {% block tab_hist %}{% endblock %}">History Sesi</a>
+      <a href="/model" class="nav-tab {% block tab_model %}{% endblock %}">Tentang Model</a>
+      <button class="theme-toggle" type="button" onclick="toggleTheme()" aria-label="Ganti tema"><span id="theme-icon"></span></button>
+    </div>
+  </nav>
+
+  <main class="container">
+    {% block content %}{% endblock %}
+  </main>
+
+  <script>
+    function applyTheme(theme) {
+      document.documentElement.setAttribute('data-theme', theme);
+      document.getElementById('theme-icon').textContent = theme === 'dark' ? 'Terang' : 'Gelap';
+    }
+    function toggleTheme() {
+      const current = document.documentElement.getAttribute('data-theme') || 'dark';
+      const next = current === 'dark' ? 'light' : 'dark';
+      try { localStorage.setItem('fer-theme', next); } catch (e) {}
+      applyTheme(next);
+    }
+    applyTheme(document.documentElement.getAttribute('data-theme') || 'dark');
+  </script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

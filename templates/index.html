@@ -1,0 +1,242 @@
+{% extends "base.html" %}
+{% block title %}FER Monitor | Live Preview{% endblock %}
+{% block tab_live %}active{% endblock %}
+
+{% block content %}
+  <header class="page-header">
+    <p class="kicker" data-at>Facial Expression Recognition</p>
+    <h1 data-at>Membaca <em id="hero-mood">ekspresi</em> secara langsung</h1>
+  </header>
+
+  <div id="error-banner" class="error-banner hidden"></div>
+
+  <section class="console">
+    <div class="console-main" data-at>
+      <div class="video-wrapper">
+        <div id="video-loading" class="video-loading">
+          <div class="spinner"></div>
+          <span>Memuat kamera...</span>
+        </div>
+        <img id="video-feed" src="{{ url_for('video_feed') }}?v={{ cache_bust }}" alt="Tayangan webcam langsung" onload="hideLoading()">
+        <i class="hud hud-a"></i><i class="hud hud-b"></i><i class="hud hud-c"></i><i class="hud hud-d"></i>
+        <div id="rec-indicator" class="rec-indicator hidden">
+          <span class="rec-dot"></span> REC <span id="rec-timer">00:00</span>
+        </div>
+      </div>
+
+      <div class="camera-select-row">
+        <label for="camera-select">Sumber kamera</label>
+        <select id="camera-select" onchange="switchCamera()">
+          <option value="">Memuat daftar kamera...</option>
+        </select>
+        <span id="camera-status" class="camera-status"></span>
+      </div>
+    </div>
+
+    <aside class="console-side" data-at>
+      <div class="readout">
+        <span class="status-label">Ekspresi terdeteksi</span>
+        <span id="current-emotion" class="readout-value">-</span>
+        <div class="readout-row">
+          <div><span class="status-label">Confidence</span><span id="current-confidence" class="status-value">-</span></div>
+          <div><span class="status-label">Wajah</span><span id="face-count" class="status-value">0</span></div>
+        </div>
+      </div>
+
+      <div class="meter" aria-label="Distribusi ekspresi beberapa saat terakhir">
+        <h3 class="status-label">Distribusi beberapa saat terakhir</h3>
+        <div id="meter-bars"></div>
+      </div>
+
+      <div class="action-row">
+        <button id="btn-start" class="btn-primary" onclick="startSession()">Start Session</button>
+        <button id="btn-stop" class="btn-danger hidden" onclick="stopSession()">Stop Session</button>
+      </div>
+    </aside>
+  </section>
+
+  <div id="result-card" class="result-card hidden">
+    <h3 id="result-title">Sesi Selesai</h3>
+    <p id="result-summary"></p>
+    <a id="result-link" href="/history" class="btn-secondary">Lihat Detail Sesi</a>
+  </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const EMOTIONS = ['happy', 'sad', 'angry', 'fear', 'surprise', 'disgust', 'neutral'];
+
+  const bars = document.getElementById('meter-bars');
+  EMOTIONS.forEach(e => {
+    bars.insertAdjacentHTML('beforeend',
+      `<div class="bar" data-emotion="${e}"><span>${e}</span><i><b style="background:var(--e-${e})"></b></i><em>0%</em></div>`);
+  });
+
+  function updateMeter() {
+    fetch('/api/timeline')
+      .then(res => res.json())
+      .then(data => {
+        EMOTIONS.forEach(e => {
+          const row = bars.querySelector(`[data-emotion="${e}"]`);
+          const v = data[e] || 0;
+          row.querySelector('b').style.width = v + '%';
+          row.querySelector('em').textContent = Math.round(v) + '%';
+        });
+      })
+      .catch(() => {});
+  }
+  setInterval(updateMeter, 2000);
+  updateMeter();
+
+  function checkHealth() {
+    fetch('/api/health')
+      .then(res => res.json())
+      .then(data => {
+        const banner = document.getElementById('error-banner');
+        if (!data.model_loaded) {
+          banner.textContent = 'Model gagal dimuat: ' + data.model_error + '. Cek file di folder model/.';
+          banner.classList.remove('hidden');
+        } else if (!data.camera_running) {
+          banner.innerHTML = 'Kamera belum aktif. <button onclick="retryCamera()">Coba lagi</button>';
+          banner.classList.remove('hidden');
+          hideLoading();
+        } else {
+          banner.classList.add('hidden');
+        }
+      });
+  }
+
+  function retryCamera() {
+    fetch('/api/camera/start', { method: 'POST' })
+      .then(res => res.json())
+      .then(data => {
+        if (data.status === 'ok') {
+          location.reload();
+        } else {
+          alert('Gagal: ' + data.message);
+        }
+      });
+  }
+
+  checkHealth();
+
+  let sessionActive = false;
+
+  function startSession() {
+    fetch('/api/start', { method: 'POST' })
+      .then(res => res.json())
+      .then(data => {
+        if (data.status === 'started') {
+          sessionActive = true;
+          document.getElementById('btn-start').classList.add('hidden');
+          document.getElementById('btn-stop').classList.remove('hidden');
+          document.getElementById('rec-indicator').classList.remove('hidden');
+          document.getElementById('result-card').classList.add('hidden');
+        }
+      });
+  }
+
+  function stopSession() {
+    fetch('/api/stop', { method: 'POST' })
+      .then(res => res.json())
+      .then(data => {
+        sessionActive = false;
+        document.getElementById('btn-start').classList.remove('hidden');
+        document.getElementById('btn-stop').classList.add('hidden');
+        document.getElementById('rec-indicator').classList.add('hidden');
+        showResult(data);
+      });
+  }
+
+  function showResult(data) {
+    const card  = document.getElementById('result-card');
+    const link  = document.getElementById('result-link');
+    const title = document.getElementById('result-title');
+    const summary = document.getElementById('result-summary');
+    if (data.status === 'stopped' && data.result) {
+      title.textContent = 'Sesi Selesai';
+      summary.textContent = `Ekspresi dominan: ${data.result.dominant} (${data.result.total_logs} log tercatat)`;
+      link.href = '/history/' + data.result.id;
+      link.classList.remove('hidden');
+    } else {
+      title.textContent = 'Sesi tidak disimpan';
+      summary.textContent = 'Belum ada ekspresi yang tercatat. Pastikan wajah terlihat kamera dan sesi berjalan minimal 5 detik.';
+      link.classList.add('hidden');
+    }
+    card.classList.remove('hidden');
+  }
+
+  function loadCameraList() {
+    fetch('/api/cameras')
+      .then(res => res.json())
+      .then(data => {
+        const select = document.getElementById('camera-select');
+        select.innerHTML = '';
+        data.cameras.forEach(cam => {
+          const opt = document.createElement('option');
+          opt.value = cam.index;
+          opt.textContent = cam.name;
+          if (cam.index === data.current) opt.selected = true;
+          select.appendChild(opt);
+        });
+      });
+  }
+
+  function switchCamera() {
+    if (sessionActive) {
+      alert('Hentikan sesi sebelum mengganti kamera.');
+      loadCameraList();
+      return;
+    }
+
+    const select = document.getElementById('camera-select');
+    const status = document.getElementById('camera-status');
+    status.textContent = 'Mengganti kamera...';
+
+    fetch('/api/camera/switch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ source: select.value })
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.status === 'ok') {
+          status.textContent = 'Kamera berhasil diganti';
+          // Refresh video feed dengan timestamp baru biar browser reload stream
+          const img = document.getElementById('video-feed');
+          img.src = img.src.split('?')[0] + '?t=' + Date.now();
+        } else {
+          status.textContent = 'Gagal: ' + data.message;
+        }
+      });
+  }
+
+  loadCameraList();
+
+  /* Warna seluruh halaman mengikuti ekspresi yang sedang terbaca */
+  function pollStatus() {
+    fetch('/api/status')
+      .then(res => res.json())
+      .then(data => {
+        const emotion = data.emotion;
+        document.getElementById('current-emotion').textContent = emotion || '-';
+        document.getElementById('current-confidence').textContent = emotion ? data.confidence + '%' : '-';
+        document.getElementById('face-count').textContent = data.face_count;
+        document.getElementById('hero-mood').textContent = emotion || 'ekspresi';
+        document.documentElement.style.setProperty('--mood',
+          EMOTIONS.includes(emotion) ? `var(--e-${emotion})` : 'var(--e-idle)');
+
+        const mins = String(Math.floor(data.elapsed / 60)).padStart(2, '0');
+        const secs = String(data.elapsed % 60).padStart(2, '0');
+        document.getElementById('rec-timer').textContent = `${mins}:${secs}`;
+      })
+      .catch(() => {});
+  }
+  setInterval(pollStatus, 1000);
+  pollStatus();
+
+  function hideLoading() {
+    document.getElementById('video-loading').classList.add('hidden');
+  }
+</script>
+{% endblock %}

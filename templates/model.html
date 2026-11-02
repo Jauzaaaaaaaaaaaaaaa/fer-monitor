@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}FER Monitor | Tentang Model{% endblock %}
+{% block tab_model %}active{% endblock %}
+
+{% block content %}
+  <header class="page-header">
+    <p class="kicker" data-at>Transparansi model</p>
+    <h1 data-at-split>Seberapa <em>akurat</em> model ini?</h1>
+    <p class="lead" data-at>Diukur ulang dengan <code>evaluate.py</code> pada {{ m.jumlah_uji }} gambar validasi. Data ini juga dipakai untuk memilih model terbaik, jadi angka sebenarnya bisa sedikit lebih rendah.</p>
+  </header>
+
+  <section class="metrics-grid" data-at-stagger>
+    <div class="metric-card"><div class="label">Akurasi validasi</div><div class="value">57,9%</div></div>
+    <div class="metric-card"><div class="label">Macro F1</div><div class="value">0,536</div></div>
+    <div class="metric-card"><div class="label">Tebakan acak, 7 kelas</div><div class="value">14,3%</div></div>
+  </section>
+
+  <section class="chart-section" data-at>
+    <h3>Kinerja per ekspresi</h3>
+    <p class="lead model-note">Terkuat pada happy dan surprise, terlemah pada fear dan angry. Jangan dipakai untuk keputusan tentang seseorang.</p>
+    <div class="model-scroll">
+      <table class="model-table">
+        <thead><tr><th>Ekspresi</th><th>Precision</th><th>Recall</th><th>F1</th><th>Gambar</th></tr></thead>
+        <tbody>
+          {% for k in m.per_kelas %}
+          <tr><td class="model-name"><i style="background:var(--e-{{ k.nama }})"></i>{{ k.nama }}</td><td>{{ k.precision }}</td><td>{{ k.recall }}</td><td>{{ k.f1 }}</td><td>{{ k.support }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="model-figs">
+    <figure class="chart-section" data-at>
+      <img src="{{ url_for('static', filename='img/kurva-latih.png') }}" alt="Kurva akurasi dan loss selama pelatihan" loading="lazy">
+      <figcaption>Kurva tiga fase pelatihan dari notebook: ekstraksi fitur, fine-tuning, dan fine-tuning lanjutan.</figcaption>
+    </figure>
+    <figure class="chart-section" data-at>
+      <h3>Confusion matrix</h3>
+      <div class="model-scroll">
+        <table class="cm">
+          <thead><tr><th>Asli / tebakan</th>{% for k in m.kelas %}<th>{{ k }}</th>{% endfor %}</tr></thead>
+          <tbody>
+            {% for baris in m.confusion %}
+            {% set total = baris|sum %}
+            <tr><th>{{ m.kelas[loop.index0] }}</th>{% for n in baris %}<td style="--v:{{ (n / total * 100)|round(0) }}%" title="{{ n }} dari {{ total }} gambar">{{ n }}</td>{% endfor %}</tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <figcaption>Dihitung oleh evaluate.py. Warna makin pekat berarti makin besar porsi baris itu.</figcaption>
+    </figure>
+  </section>
+
+  <section class="chart-section" data-at>
+    <h3>Cara kerja dan batasan</h3>
+    <ul class="model-list">
+      <li>Arsitektur MobileNetV2 dengan tiga fase pelatihan dan penyeimbangan kelas, masukan 96 x 96 piksel.</li>
+      <li>Wajah dicari dengan MTCNN. Hasil dihaluskan dengan voting mayoritas dari {{ m.smoothing }} deteksi terakhir.</li>
+      <li>Datasetnya berisi gambar skala abu-abu 48 x 48 piksel yang sulit, dan label manusianya pun tidak selalu konsisten.</li>
+      <li>Ekspresi wajah tidak sama dengan perasaan seseorang yang sebenarnya.</li>
+    </ul>
+  </section>
+{% endblock %}
