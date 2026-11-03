@@ -1,10 +1,10 @@
-# FER Monitor
+# Facial Expression Detector
 
 Pemantau ekspresi wajah dari webcam dengan MobileNetV2, MTCNN, dan Flask. Proyek kelompok.
 
-**Demo:** https://portofolio-jauza-fawaid.netlify.app/DETEKSI-EKSPRESI/ (pratinjau statis dengan data contoh)
+**Demo:** https://portofolio-jauza-fawaid.netlify.app/DETEKSI-EKSPRESI/ (kamera dan model berjalan langsung di browser, riwayat memakai data contoh)
 
-![Tampilan FER Monitor](docs/tampilan.jpg)
+![Tampilan Facial Expression Detector](docs/tampilan.jpg)
 
 Aplikasi web pemantau ekspresi wajah secara langsung dari webcam. Dibuat bersama kelompok.
 

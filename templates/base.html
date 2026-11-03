@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block title %}FER Monitor{% endblock %}</title>
+  <title>{% block title %}Facial Expression Detector{% endblock %}</title>
   <script>
     try { document.documentElement.setAttribute('data-theme', localStorage.getItem('fer-theme') || 'dark'); } catch (e) {}
   </script>
@@ -18,7 +18,7 @@
 </head>
 <body>
   <nav class="navbar at-top">
-    <a class="navbar-brand" href="/"><i></i>FER Monitor</a>
+    <a class="navbar-brand" href="/"><i></i>Facial Expression Detector</a>
     <div class="navbar-tabs">
       <a href="/" class="nav-tab {% block tab_live %}{% endblock %}">Live Preview</a>
       <a href="/history" class="nav-tab {% block tab_hist %}{% endblock %}">History Sesi</a>

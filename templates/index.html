@@ -1,11 +1,11 @@
 {% extends "base.html" %}
-{% block title %}FER Monitor | Live Preview{% endblock %}
+{% block title %}Facial Expression Detector | Live Preview{% endblock %}
 {% block tab_live %}active{% endblock %}
 
 {% block content %}
   <header class="page-header">
     <p class="kicker" data-at>Facial Expression Recognition</p>
-    <h1 data-at>Membaca <em id="hero-mood">ekspresi</em> secara langsung</h1>
+    <h1 data-at>Facial <em id="hero-mood">Expression</em> Detector</h1>
   </header>
 
   <div id="error-banner" class="error-banner hidden"></div>
@@ -222,7 +222,6 @@
         document.getElementById('current-emotion').textContent = emotion || '-';
         document.getElementById('current-confidence').textContent = emotion ? data.confidence + '%' : '-';
         document.getElementById('face-count').textContent = data.face_count;
-        document.getElementById('hero-mood').textContent = emotion || 'ekspresi';
         document.documentElement.style.setProperty('--mood',
           EMOTIONS.includes(emotion) ? `var(--e-${emotion})` : 'var(--e-idle)');
 
